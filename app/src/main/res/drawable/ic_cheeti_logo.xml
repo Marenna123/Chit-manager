@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="512dp"
+    android:height="512dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+
+    <!-- 1. Bottom Outer Green Arch & Silhouette Circle -->
+    <path
+        android:pathData="M110,240 C110,360 170,446 256,446 C342,446 402,360 402,240 C445,260 455,340 430,395 C395,465 330,488 256,488 C182,488 117,465 82,395 C57,340 67,260 110,240 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="100"
+                android:startY="240"
+                android:endX="400"
+                android:endY="480"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#006738" />
+                <item android:offset="1.0" android:color="#004D25" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 2. Lower Golden Swoosh Accents (Underlining the unity ring) -->
+    <!-- Left Golden Swoosh -->
+    <path
+        android:pathData="M95,350 C125,410 185,445 256,448 C200,440 148,405 125,355 C108,318 105,280 115,250 C100,285 90,320 95,350 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="95"
+                android:startY="350"
+                android:endX="256"
+                android:endY="450"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#F59E0B" />
+                <item android:offset="0.5" android:color="#FBBF24" />
+                <item android:offset="1.0" android:color="#D97706" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Right Golden Swoosh -->
+    <path
+        android:pathData="M417,350 C387,410 327,445 256,448 C312,440 364,405 387,355 C404,318 407,280 397,250 C412,285 422,320 417,350 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="417"
+                android:startY="350"
+                android:endX="256"
+                android:endY="450"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#F59E0B" />
+                <item android:offset="0.5" android:color="#FBBF24" />
+                <item android:offset="1.0" android:color="#D97706" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 3. Left Figures (Torso Curves) -->
+    <path
+        android:pathData="M110,240 C110,180 145,135 185,110 C165,135 150,170 148,215 C132,220 118,228 110,240 Z"
+        android:fillColor="#006738" />
+
+    <path
+        android:pathData="M148,215 C150,270 185,320 220,335 C175,325 140,280 135,230 Z"
+        android:fillColor="#005A32" />
+
+    <!-- 4. Top Figure (Torso & Shoulders) -->
+    <path
+        android:pathData="M185,110 C210,95 240,90 256,90 C272,90 302,95 327,110 C300,125 280,150 256,190 C232,150 212,125 185,110 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="185"
+                android:startY="90"
+                android:endX="327"
+                android:endY="190"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#006738" />
+                <item android:offset="1.0" android:color="#005A32" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 5. Right Figures & Arm -->
+    <path
+        android:pathData="M327,110 C367,135 402,180 402,240 C394,228 380,220 364,215 C362,170 347,135 327,110 Z"
+        android:fillColor="#006738" />
+
+    <path
+        android:pathData="M364,215 C362,270 327,320 292,335 C337,325 372,280 377,230 Z"
+        android:fillColor="#005A32" />
+
+    <!-- 6. Reaching Arm & Hand dropping coin -->
+    <!-- Arm -->
+    <path
+        android:pathData="M375,160 C360,165 325,178 300,205 C295,210 288,220 282,235 C286,233 293,228 300,223 C312,212 335,195 375,185 Z"
+        android:fillColor="#004D25" />
+
+    <!-- Hand & Fingers curving over coin -->
+    <path
+        android:pathData="M300,205 C292,192 278,193 268,202 C262,207 258,214 260,223 C263,220 268,217 274,216 C282,215 288,220 282,235 C288,228 296,218 300,205 Z"
+        android:fillColor="#004D25" />
+
+    <!-- Gold Bangles on the reaching wrist -->
+    <path
+        android:pathData="M344,180 C347,175 352,170 357,166 L361,170 C356,174 351,179 348,184 Z"
+        android:fillColor="#FBBF24" />
+    <path
+        android:pathData="M352,185 C355,180 360,175 365,171 L369,175 C364,179 359,184 356,189 Z"
+        android:fillColor="#F59E0B" />
+
+    <!-- 7. The 5 Member Heads (Solid Circles) -->
+    <!-- Top Center Head -->
+    <path
+        android:pathData="M256,40 A30,30 0 1,0 256,100 A30,30 0 1,0 256,40 Z"
+        android:fillColor="#006738" />
+
+    <!-- Top Left Head -->
+    <path
+        android:pathData="M130,85 A28,28 0 1,0 130,141 A28,28 0 1,0 130,85 Z"
+        android:fillColor="#006738" />
+
+    <!-- Bottom Left Head -->
+    <path
+        android:pathData="M105,195 A28,28 0 1,0 105,251 A28,28 0 1,0 105,195 Z"
+        android:fillColor="#006738" />
+
+    <!-- Top Right Head -->
+    <path
+        android:pathData="M382,85 A28,28 0 1,0 382,141 A28,28 0 1,0 382,85 Z"
+        android:fillColor="#006738" />
+
+    <!-- Bottom Right Head -->
+    <path
+        android:pathData="M407,195 A28,28 0 1,0 407,251 A28,28 0 1,0 407,195 Z"
+        android:fillColor="#006738" />
+
+    <!-- 8. Golden Money Pot (Matka / Kalasha) -->
+    <!-- Pot Body Base Shadow & Shape -->
+    <path
+        android:pathData="M200,265 C175,280 155,315 168,360 C182,405 218,416 256,416 C294,416 330,405 344,360 C357,315 337,280 312,265 C316,252 308,245 256,245 C204,245 196,252 200,265 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="170"
+                android:startY="250"
+                android:endX="340"
+                android:endY="415"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FDE68A" />
+                <item android:offset="0.3" android:color="#F59E0B" />
+                <item android:offset="0.7" android:color="#D97706" />
+                <item android:offset="1.0" android:color="#92400E" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Pot Neck & Lip Highlight -->
+    <path
+        android:pathData="M198,252 C204,244 220,240 256,240 C292,240 308,244 314,252 C318,258 304,264 256,264 C208,264 194,258 198,252 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="200"
+                android:startY="240"
+                android:endX="312"
+                android:endY="264"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FEF3C7" />
+                <item android:offset="0.5" android:color="#FBBF24" />
+                <item android:offset="1.0" android:color="#D97706" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Pot Opening Inner Rim Shadow -->
+    <path
+        android:pathData="M210,250 C218,246 235,244 256,244 C277,244 294,246 302,250 C296,254 278,257 256,257 C234,257 216,254 210,250 Z"
+        android:fillColor="#78350F" />
+
+    <!-- 9. Golden Coin entering the pot -->
+    <path
+        android:pathData="M256,198 A24,24 0 1,0 256,246 A24,24 0 1,0 256,198 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="236"
+                android:startY="200"
+                android:endX="276"
+                android:endY="244"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FEF08A" />
+                <item android:offset="0.5" android:color="#F59E0B" />
+                <item android:offset="1.0" android:color="#B45309" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- Inner Coin Ridge -->
+    <path
+        android:pathData="M256,204 A18,18 0 1,0 256,240 A18,18 0 1,0 256,204 Z"
+        android:fillColor="#FBBF24" />
+
+    <!-- 10. Rupee Symbol (₹) on the Pot Belly -->
+    <!-- Top Horizontal Bar -->
+    <path
+        android:pathData="M226,306 L286,306 L286,315 L226,315 Z"
+        android:fillColor="#004D25" />
+
+    <!-- Second Horizontal Bar -->
+    <path
+        android:pathData="M226,322 L278,322 L278,331 L226,331 Z"
+        android:fillColor="#004D25" />
+
+    <!-- Vertical Stem, Upper Curve, and Diagonal Leg -->
+    <path
+        android:pathData="M242,306 L252,306 L252,382 L242,382 Z"
+        android:fillColor="#004D25" />
+
+    <path
+        android:pathData="M242,315 L268,315 C278,315 284,321 284,330 C284,339 278,345 268,345 L242,345 L242,336 L266,336 C272,336 274,333 274,330 C274,327 272,324 266,324 L242,324 Z"
+        android:fillColor="#004D25" />
+
+    <path
+        android:pathData="M256,342 L288,382 L274,382 L245,345 Z"
+        android:fillColor="#004D25" />
+
+</vector>
