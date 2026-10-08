@@ -15,11 +15,13 @@ import com.example.data.local.entity.ReceiptEntity
 import com.example.data.local.entity.SettingsEntity
 import com.example.data.model.AdminDashboardMetrics
 import com.example.data.model.MemberDashboardSummary
+import com.example.data.model.MemberDuesOverview
 import com.example.data.repository.ChittiRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -36,6 +38,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     val metrics: StateFlow<AdminDashboardMetrics> = repository.getAdminDashboardMetrics()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AdminDashboardMetrics())
+
+    val memberDuesList: StateFlow<List<MemberDuesOverview>> = repository.getAllMemberDuesOverviews()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val memberDuesMap: StateFlow<Map<Long, MemberDuesOverview>> = memberDuesList
+        .map { list -> list.associateBy { it.memberId } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     val chitties: StateFlow<List<ChittyEntity>> = repository.allChitties
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

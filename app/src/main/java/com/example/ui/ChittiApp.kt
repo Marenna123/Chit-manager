@@ -446,7 +446,8 @@ fun ChittiApp(viewModel: MainViewModel) {
                         onOpenRecordPayment = {
                             currentTab = ScreenTab.PAYMENTS
                             openRecordPaymentDialog = true
-                        }
+                        },
+                        onMemberClick = { id -> viewingMemberId = id }
                     )
                     ScreenTab.CHITTIES -> ChittiesScreen(
                         viewModel = viewModel,

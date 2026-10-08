@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,9 +19,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Payment
@@ -33,6 +37,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -70,11 +75,14 @@ fun DashboardScreen(
     onNavigateToReports: () -> Unit,
     onOpenCreateChitty: () -> Unit,
     onOpenAddMember: () -> Unit,
-    onOpenRecordPayment: () -> Unit
+    onOpenRecordPayment: () -> Unit,
+    onMemberClick: (Long) -> Unit = {}
 ) {
     val metrics by viewModel.metrics.collectAsState()
     val admin by viewModel.admin.collectAsState()
     val settings by viewModel.settings.collectAsState()
+    val memberDuesList by viewModel.memberDuesList.collectAsState()
+    val members by viewModel.members.collectAsState()
 
     val adminDisplayName = admin?.name ?: settings?.adminName ?: "Management"
 
@@ -283,14 +291,227 @@ fun DashboardScreen(
                 )
 
                 StatCard(
-                    title = "Total Outstanding",
-                    value = "₹${metrics.totalOutstanding.toLong()}",
+                    title = "Month Outstanding",
+                    value = "₹${metrics.currentMonthOutstanding.toLong()}",
                     icon = Icons.Default.Warning,
                     iconColor = RedAlert,
                     backgroundColor = RedAlertLight,
-                    subtitle = "Pending Dues",
+                    subtitle = if (metrics.previousPending > 0) "Old Due: ₹${metrics.previousPending.toLong()}" else "This Month Pending",
                     modifier = Modifier.weight(1f)
                 )
+            }
+        }
+
+        // Member Dues Section (Clearly showing Current Month & Old Pending for 2-3 chitties)
+        val membersWithDues = memberDuesList.filter { it.enrolledChittiesCount > 0 }
+
+        if (membersWithDues.isNotEmpty()) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Member Payment Dues",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                        )
+                        Text(
+                            text = "Clear breakdown of Current Month & Old Balance",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Text(
+                        text = "${membersWithDues.size} Members",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = NavyPrimary
+                    )
+                }
+            }
+
+            items(membersWithDues.size) { index ->
+                val dues = membersWithDues[index]
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onMemberClick(dues.memberId) }
+                        .testTag("dashboard_member_due_${dues.memberId}"),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { onMemberClick(dues.memberId) }
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = dues.memberName,
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = NavyPrimary
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(
+                                        imageVector = Icons.Default.ChevronRight,
+                                        contentDescription = "View Member Details",
+                                        modifier = Modifier.size(18.dp),
+                                        tint = NavyPrimary
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .background(
+                                                if (dues.enrolledChittiesCount >= 2) Color(0xFFEFF6FF) else Color(0xFFF1F5F9),
+                                                RoundedCornerShape(6.dp)
+                                            )
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = if (dues.enrolledChittiesCount >= 2) "In ${dues.enrolledChittiesCount} Chitties" else "1 Chitty",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                            color = if (dues.enrolledChittiesCount >= 2) NavyPrimary else Color(0xFF475569)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "(${dues.memberCode})",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Button(
+                                    onClick = onOpenRecordPayment,
+                                    colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary),
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Text("Pay", fontSize = 12.sp)
+                                }
+                                Spacer(modifier = Modifier.width(6.dp))
+                                val memberEntity = members.firstOrNull { it.id == dues.memberId }
+                                if (memberEntity != null) {
+                                    IconButton(
+                                        onClick = { viewModel.prepareWhatsAppReminder(memberEntity) },
+                                        modifier = Modifier.size(34.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Chat,
+                                            contentDescription = "WhatsApp Notice",
+                                            tint = Color(0xFF25D366),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+                        androidx.compose.material3.Divider()
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Financial Breakdown Row: Current Month, Old Pending, Total Balance
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Current Month Paying",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "₹${dues.currentMonthPaying.toLong()}",
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (dues.currentMonthPending <= 0.0) GreenSuccess else OrangeWarning
+                                    )
+                                )
+                            }
+
+                            Column {
+                                Text(
+                                    text = "Previous / Old Pending",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "₹${dues.previousPending.toLong()}",
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (dues.previousPending > 0.0) RedAlert else GreenSuccess
+                                    )
+                                )
+                            }
+
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    text = "Total Balance Due",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "₹${dues.totalDue.toLong()}",
+                                    style = MaterialTheme.typography.titleSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (dues.totalDue > 0.0) RedAlert else GreenSuccess
+                                    )
+                                )
+                            }
+                        }
+
+                        // If member is in multiple chitties, show the individual chitty breakdown
+                        if (dues.chittyBreakdowns.size > 1) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                                    .padding(8.dp)
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    dues.chittyBreakdowns.forEach { item ->
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                text = "• ${item.chittyName}:",
+                                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold)
+                                            )
+                                            Text(
+                                                text = if (item.oldPending > 0.0)
+                                                    "Current: ₹${item.monthlyInstallment.toLong()} | Old: ₹${item.oldPending.toLong()} = ₹${item.totalDue.toLong()}"
+                                                else
+                                                    "Current: ₹${item.monthlyInstallment.toLong()}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 

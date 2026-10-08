@@ -187,66 +187,225 @@ fun MemberDetailScreen(
                 }
             }
 
-            // SUMMARY Section
+            // PRIMARY PAYMENT DUES & BALANCE OVERVIEW
             item {
-                Text(
-                    text = "SUMMARY",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                )
-            }
-
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("member_dues_breakdown_card"),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
-                    StatCard(
-                        title = "Total Chitties",
-                        value = "${summary!!.totalChitties}",
-                        icon = Icons.Default.Assignment,
-                        iconColor = NavyPrimary,
-                        backgroundColor = MaterialTheme.colorScheme.primaryContainer,
-                        modifier = Modifier.weight(1f)
-                    )
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Payment Dues & Balance",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                            )
+                            if (summary!!.totalChitties > 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .background(
+                                            if (summary!!.totalChitties >= 2) Color(0xFFEFF6FF) else Color(0xFFF1F5F9),
+                                            RoundedCornerShape(8.dp)
+                                        )
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = if (summary!!.totalChitties >= 2) "${summary!!.totalChitties} Chitties" else "1 Chitty",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = if (summary!!.totalChitties >= 2) NavyPrimary else Color(0xFF475569)
+                                    )
+                                }
+                            }
+                        }
 
-                    StatCard(
-                        title = "Current Month Due",
-                        value = "₹${summary!!.currentMonthDue.toLong()}",
-                        icon = Icons.Default.Payment,
-                        iconColor = OrangeWarning,
-                        backgroundColor = OrangeWarningLight,
-                        modifier = Modifier.weight(1f)
-                    )
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Divider()
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // 1. Total Paying Current Month
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "1. Total Paying Current Month",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = if (summary!!.currentMonthPaid > 0)
+                                        "Paid: ₹${summary!!.currentMonthPaid.toLong()} | Pending: ₹${summary!!.currentMonthPending.toLong()}"
+                                    else
+                                        "Current Month Scheduled Due",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Text(
+                                text = "₹${summary!!.currentMonthDue.toLong()}",
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (summary!!.currentMonthPending <= 0.0) GreenSuccess else OrangeWarning
+                                )
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // 2. Previous Payment Any Pending (Old Pending)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "2. Previous Months Pending (Old Balance)",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = if (summary!!.previousOutstanding > 0)
+                                        "⚠️ Past unpaid installments"
+                                    else
+                                        "✅ All previous months cleared",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (summary!!.previousOutstanding > 0) RedAlert else GreenSuccess
+                                )
+                            }
+                            Text(
+                                text = "₹${summary!!.previousOutstanding.toLong()}",
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (summary!!.previousOutstanding > 0) RedAlert else GreenSuccess
+                                )
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // 3. Clearly add and show balance old and current month
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    if (summary!!.totalDue > 0) RedAlertLight else GreenSuccessLight,
+                                    RoundedCornerShape(12.dp)
+                                )
+                                .padding(14.dp)
+                        ) {
+                            Column {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text(
+                                            text = "TOTAL BALANCE DUE",
+                                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = if (summary!!.totalDue > 0) RedAlert else GreenSuccess
+                                        )
+                                        Text(
+                                            text = "(Old Pending + Current Month)",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = if (summary!!.totalDue > 0) RedAlert.copy(alpha = 0.8f) else GreenSuccess.copy(alpha = 0.8f)
+                                        )
+                                    }
+                                    Text(
+                                        text = "₹${summary!!.totalDue.toLong()}",
+                                        style = MaterialTheme.typography.headlineMedium.copy(
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = if (summary!!.totalDue > 0) RedAlert else GreenSuccess
+                                        )
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "₹${summary!!.currentMonthPending.toLong()} (Current Month) + ₹${summary!!.previousOutstanding.toLong()} (Old Balance) = ₹${summary!!.totalDue.toLong()}",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                                    color = if (summary!!.totalDue > 0) RedAlert else GreenSuccess
+                                )
+                            }
+                        }
+
+                        // 4. If person is in 2 or 3 cheetis, show individual cheeti breakdown
+                        if (summary!!.chittySummaries.size >= 2) {
+                            Spacer(modifier = Modifier.height(14.dp))
+                            Divider()
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Text(
+                                text = "Cheeti-wise Dues Breakdown (${summary!!.chittySummaries.size} Chitties):",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                summary!!.chittySummaries.forEach { cs ->
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(10.dp))
+                                            .padding(12.dp)
+                                    ) {
+                                        Column {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(
+                                                    text = cs.chitty.name,
+                                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                                                )
+                                                Text(
+                                                    text = "₹${cs.monthlyInstallment.toLong()}/mo",
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.height(6.dp))
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Text(
+                                                    text = "Current: ₹${cs.currentMonthDue.toLong()}",
+                                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                                    color = OrangeWarning
+                                                )
+                                                Text(
+                                                    text = "Old: ₹${cs.previousOutstanding.toLong()}",
+                                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                                    color = if (cs.previousOutstanding > 0) RedAlert else GreenSuccess
+                                                )
+                                                Text(
+                                                    text = "Total: ₹${cs.totalDue.toLong()}",
+                                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                                    color = if (cs.totalDue > 0) RedAlert else GreenSuccess
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    StatCard(
-                        title = "Previous Outstanding",
-                        value = "₹${summary!!.previousOutstanding.toLong()}",
-                        icon = Icons.Default.Warning,
-                        iconColor = RedAlert,
-                        backgroundColor = RedAlertLight,
-                        subtitle = "Carried Forward",
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    StatCard(
-                        title = "Total Outstanding",
-                        value = "₹${summary!!.totalOutstanding.toLong()}",
-                        icon = Icons.Default.Warning,
-                        iconColor = RedAlert,
-                        backgroundColor = RedAlertLight,
-                        subtitle = "Total Pending",
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-
+            // ACCOUNT SUMMARY CARDS
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -258,6 +417,7 @@ fun MemberDetailScreen(
                         icon = Icons.Default.CheckCircle,
                         iconColor = GreenSuccess,
                         backgroundColor = GreenSuccessLight,
+                        subtitle = "Till Date",
                         modifier = Modifier.weight(1f)
                     )
 
@@ -362,23 +522,35 @@ fun MemberChittyCard(chittySummary: MemberChittySummary) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
-                    Text(text = "Chitty Amount", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(text = "₹${chitty.totalAmount.toLong()}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
-                }
-
-                Column {
-                    Text(text = "Installment", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(text = "₹${chittySummary.monthlyInstallment.toLong()}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
-                }
-
-                Column {
-                    Text(text = "Current Due", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(text = "Current Month", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(text = "₹${chittySummary.currentMonthDue.toLong()}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = OrangeWarning))
                 }
 
                 Column {
-                    Text(text = "Outstanding", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(text = "₹${chittySummary.totalOutstanding.toLong()}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = RedAlert))
+                    Text(text = "Old Pending", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        text = "₹${chittySummary.previousOutstanding.toLong()}",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = if (chittySummary.previousOutstanding > 0) RedAlert else GreenSuccess
+                        )
+                    )
+                }
+
+                Column {
+                    Text(text = "Total Due", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        text = "₹${chittySummary.totalDue.toLong()}",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = if (chittySummary.totalDue > 0) RedAlert else GreenSuccess
+                        )
+                    )
+                }
+
+                Column {
+                    Text(text = "Duration Left", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(text = "₹${chittySummary.totalOutstanding.toLong()}", style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant))
                 }
             }
 

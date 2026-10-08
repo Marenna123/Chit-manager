@@ -353,6 +353,97 @@ fun RecordPaymentDialog(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // Chitties Allocation (Handles Combined Payment for multiple chitties)
+                val memberDuesMap by viewModel.memberDuesMap.collectAsState()
+                val currentMemberDues = memberDuesMap[selectedMemberId]
+
+                if (currentMemberDues != null && joinedChitties.isNotEmpty()) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = if (joinedChitties.size >= 2) "Enrolled in ${joinedChitties.size} Chitties" else "Chitty Dues",
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = NavyPrimary)
+                                )
+                                Text(
+                                    text = "Total Due: ₹${currentMemberDues.totalDue.toLong()}",
+                                    style = MaterialTheme.typography.titleSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (currentMemberDues.totalDue > 0) com.example.ui.theme.RedAlert else GreenSuccess
+                                    )
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Current Month: ₹${currentMemberDues.currentMonthPaying.toLong()}",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = com.example.ui.theme.OrangeWarning
+                                    )
+                                )
+                                Text(
+                                    text = "Old Pending: ₹${currentMemberDues.previousPending.toLong()}",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = if (currentMemberDues.previousPending > 0) com.example.ui.theme.RedAlert else GreenSuccess
+                                    )
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = {
+                                        joinedChitties.forEach { c ->
+                                            allocationMap[c.id] = c.monthlyInstallment.toLong().toString()
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)
+                                ) {
+                                    Text("Pay Month: ₹${currentMemberDues.currentMonthPaying.toLong()}", fontSize = 11.sp)
+                                }
+
+                                if (currentMemberDues.previousPending > 0) {
+                                    Button(
+                                        onClick = {
+                                            val breakdownMap = currentMemberDues.chittyBreakdowns.associateBy { it.chittyId }
+                                            joinedChitties.forEach { c ->
+                                                val totalForC = breakdownMap[c.id]?.totalDue ?: c.monthlyInstallment
+                                                allocationMap[c.id] = totalForC.toLong().toString()
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary),
+                                        shape = RoundedCornerShape(8.dp),
+                                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)
+                                    ) {
+                                        Text("Pay All: ₹${currentMemberDues.totalDue.toLong()}", fontSize = 11.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
                 Text(
                     text = "Allocate to Joined Chitties:",
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
@@ -386,11 +477,20 @@ fun RecordPaymentDialog(
                                         text = chitty.name,
                                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
                                     )
-                                    Text(
-                                        text = "Installment: ₹${chitty.monthlyInstallment.toLong()}",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    val itemDues = currentMemberDues?.chittyBreakdowns?.firstOrNull { it.chittyId == chitty.id }
+                                    if (itemDues != null && itemDues.oldPending > 0.0) {
+                                        Text(
+                                            text = "Month: ₹${itemDues.monthlyInstallment.toLong()} | Old: ₹${itemDues.oldPending.toLong()}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = com.example.ui.theme.RedAlert
+                                        )
+                                    } else {
+                                        Text(
+                                            text = "Current Month: ₹${chitty.monthlyInstallment.toLong()}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
 
                                 OutlinedTextField(

@@ -40,6 +40,9 @@ interface ChittyDao {
     suspend fun deleteAllChitties()
 
     @Query("SELECT * FROM chitty_members ORDER BY id ASC")
+    fun getAllChittyMembers(): Flow<List<ChittyMemberEntity>>
+
+    @Query("SELECT * FROM chitty_members ORDER BY id ASC")
     suspend fun getAllChittyMembersDirect(): List<ChittyMemberEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

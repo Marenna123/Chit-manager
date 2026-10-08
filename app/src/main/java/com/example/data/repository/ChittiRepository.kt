@@ -13,8 +13,10 @@ import com.example.data.local.entity.ReceiptEntity
 import com.example.data.local.entity.SettingsEntity
 import com.example.data.model.AdminDashboardMetrics
 import com.example.data.model.ChittyAllocationInput
+import com.example.data.model.MemberChittyDuesItem
 import com.example.data.model.MemberChittySummary
 import com.example.data.model.MemberDashboardSummary
+import com.example.data.model.MemberDuesOverview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -401,6 +403,22 @@ class ChittiRepository(private val database: AppDatabase) {
         return recipientDao.insertRecipient(recipient)
     }
 
+    fun getActiveMonthNumber(chitty: ChittyEntity): Int {
+        return try {
+            val sdf1 = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val sdf2 = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+            val startDate = sdf1.parse(chitty.startDate) ?: sdf2.parse(chitty.startDate) ?: Date()
+            val startCal = Calendar.getInstance().apply { time = startDate }
+            val nowCal = Calendar.getInstance()
+            val diffYears = nowCal.get(Calendar.YEAR) - startCal.get(Calendar.YEAR)
+            val diffMonths = nowCal.get(Calendar.MONTH) - startCal.get(Calendar.MONTH)
+            val elapsed = diffYears * 12 + diffMonths + 1
+            elapsed.coerceIn(1, chitty.durationMonths)
+        } catch (e: Exception) {
+            1
+        }
+    }
+
     // Dashboard Metrics
     fun getAdminDashboardMetrics(): Flow<AdminDashboardMetrics> = combine(
         chittyDao.getAllChitties(),
@@ -411,13 +429,27 @@ class ChittiRepository(private val database: AppDatabase) {
         val activeChitties = chitties.count { it.status == "ACTIVE" }
         val totalMembers = members.size
 
-        // Month 1 is treated as the current active cycle for this month calculations
-        val currentMonthInstallments = installments.filter { it.monthNumber == 1 }
+        val activeChittyMap = chitties.associateBy { it.id }
+
+        // Installments for the current active month of each chitty
+        val currentMonthInstallments = installments.filter { inst ->
+            val chitty = activeChittyMap[inst.chittyId]
+            val activeMonth = if (chitty != null) getActiveMonthNumber(chitty) else 1
+            inst.monthNumber == activeMonth
+        }
+
+        // Installments for previous months that are still unpaid (Old pending balance)
+        val previousMonthInstallments = installments.filter { inst ->
+            val chitty = activeChittyMap[inst.chittyId]
+            val activeMonth = if (chitty != null) getActiveMonthNumber(chitty) else 1
+            inst.monthNumber < activeMonth && inst.outstandingAmount > 0
+        }
+
         val thisMonthExpected = currentMonthInstallments.sumOf { it.dueAmount }
         val thisMonthCollected = currentMonthInstallments.sumOf { it.paidAmount }
-
-        // Total Outstanding across all installments
-        val totalOutstanding = installments.sumOf { it.outstandingAmount }
+        val currentMonthOutstanding = (thisMonthExpected - thisMonthCollected).coerceAtLeast(0.0)
+        val previousPending = previousMonthInstallments.sumOf { it.outstandingAmount }
+        val totalOutstanding = currentMonthOutstanding + previousPending
 
         AdminDashboardMetrics(
             totalChitties = totalChitties,
@@ -425,6 +457,8 @@ class ChittiRepository(private val database: AppDatabase) {
             totalMembers = totalMembers,
             thisMonthExpectedCollection = thisMonthExpected,
             thisMonthCollected = thisMonthCollected,
+            currentMonthOutstanding = currentMonthOutstanding,
+            previousPending = previousPending,
             totalOutstanding = totalOutstanding
         )
     }
@@ -443,7 +477,10 @@ class ChittiRepository(private val database: AppDatabase) {
 
         val chittySummaries = mutableListOf<MemberChittySummary>()
         var overallCurrentMonthDue = 0.0
+        var overallCurrentMonthPaid = 0.0
+        var overallCurrentMonthPending = 0.0
         var overallPreviousOutstanding = 0.0
+        var overallTotalDue = 0.0
         var overallTotalOutstanding = 0.0
         var overallTotalPaid = 0.0
         var overallAdvanceCredit = 0.0
@@ -451,14 +488,20 @@ class ChittiRepository(private val database: AppDatabase) {
         for (membership in memberships) {
             val chitty = chittyDao.getChittyByIdDirect(membership.chittyId) ?: continue
             val chittyInstallments = allMemberInstallments.filter { it.chittyId == chitty.id }
+            val activeMonth = getActiveMonthNumber(chitty)
 
-            // Current Month installment (Month 1 in current cycle)
-            val currentInst = chittyInstallments.firstOrNull { it.monthNumber == 1 }
-            val currentMonthDue = currentInst?.dueAmount ?: chitty.monthlyInstallment
+            // Current Month installment
+            val currentInst = chittyInstallments.firstOrNull { it.monthNumber == activeMonth }
+            val currentMonthScheduled = chitty.monthlyInstallment
+            val currentMonthPaid = currentInst?.paidAmount ?: 0.0
+            val currentMonthPending = currentInst?.outstandingAmount ?: chitty.monthlyInstallment
 
-            // Historical previous installments (Month > 1 if any past due or previous unpaid)
-            val previousUnpaid = chittyInstallments.filter { it.monthNumber > 1 && it.status != "PAID" }.sumOf { it.outstandingAmount }
+            // Historical previous installments (Month < activeMonth that are unpaid)
+            val previousUnpaid = chittyInstallments
+                .filter { it.monthNumber < activeMonth }
+                .sumOf { it.outstandingAmount }
 
+            val totalDueForChitty = currentMonthPending + previousUnpaid
             val totalOutstandingForChitty = chittyInstallments.sumOf { it.outstandingAmount }
             val totalPaidForChitty = chittyInstallments.sumOf { it.paidAmount }
 
@@ -469,9 +512,11 @@ class ChittiRepository(private val database: AppDatabase) {
                     chitty = chitty,
                     shareNumber = membership.shareNumber,
                     monthlyInstallment = chitty.monthlyInstallment,
-                    currentMonthDue = currentMonthDue,
+                    currentMonthDue = currentMonthScheduled,
+                    currentMonthPaid = currentMonthPaid,
+                    currentMonthPending = currentMonthPending,
                     previousOutstanding = previousUnpaid,
-                    totalDue = currentMonthDue + previousUnpaid,
+                    totalDue = totalDueForChitty,
                     totalOutstanding = totalOutstandingForChitty,
                     totalPaid = totalPaidForChitty,
                     advanceAmount = membership.advanceAmount,
@@ -482,8 +527,11 @@ class ChittiRepository(private val database: AppDatabase) {
                 )
             )
 
-            overallCurrentMonthDue += currentMonthDue
+            overallCurrentMonthDue += currentMonthScheduled
+            overallCurrentMonthPaid += currentMonthPaid
+            overallCurrentMonthPending += currentMonthPending
             overallPreviousOutstanding += previousUnpaid
+            overallTotalDue += totalDueForChitty
             overallTotalOutstanding += totalOutstandingForChitty
             overallTotalPaid += totalPaidForChitty
             overallAdvanceCredit += membership.advanceAmount
@@ -494,13 +542,83 @@ class ChittiRepository(private val database: AppDatabase) {
                 member = member,
                 totalChitties = memberships.size,
                 currentMonthDue = overallCurrentMonthDue,
+                currentMonthPaid = overallCurrentMonthPaid,
+                currentMonthPending = overallCurrentMonthPending,
                 previousOutstanding = overallPreviousOutstanding,
+                totalDue = overallTotalDue,
                 totalOutstanding = overallTotalOutstanding,
                 totalPaid = overallTotalPaid,
                 advanceCredit = overallAdvanceCredit,
                 chittySummaries = chittySummaries
             )
         )
+    }
+
+    /**
+     * Dues overview for all members with clear old and current month breakdown
+     */
+    fun getAllMemberDuesOverviews(): Flow<List<MemberDuesOverview>> = combine(
+        memberDao.getAllMembers(),
+        chittyDao.getAllChitties(),
+        chittyDao.getAllChittyMembers(),
+        installmentDao.getAllInstallments()
+    ) { members: List<MemberEntity>, chitties: List<ChittyEntity>, chittyMembers: List<ChittyMemberEntity>, installments: List<MonthlyInstallmentEntity> ->
+        val chittyMap = chitties.associateBy { it.id }
+        val memberChittyMap = chittyMembers.groupBy { it.memberId }
+        val installmentsByMember = installments.groupBy { it.memberId }
+
+        members.map { member ->
+            val memberships = memberChittyMap[member.id] ?: emptyList()
+            val memberInstallments = installmentsByMember[member.id] ?: emptyList()
+
+            var currentMonthPayingSum = 0.0
+            var currentMonthPaidSum = 0.0
+            var currentMonthPendingSum = 0.0
+            var oldPendingSum = 0.0
+            val breakdowns = mutableListOf<MemberChittyDuesItem>()
+
+            for (m in memberships) {
+                val chitty = chittyMap[m.chittyId] ?: continue
+                val activeMonth = getActiveMonthNumber(chitty)
+                val cInstallments = memberInstallments.filter { it.chittyId == chitty.id }
+                val currentInst = cInstallments.firstOrNull { it.monthNumber == activeMonth }
+                val cCurrentDue = chitty.monthlyInstallment
+                val cCurrentPaid = currentInst?.paidAmount ?: 0.0
+                val cCurrentPending = currentInst?.outstandingAmount ?: chitty.monthlyInstallment
+                val cOldPending = cInstallments.filter { it.monthNumber < activeMonth }.sumOf { it.outstandingAmount }
+
+                currentMonthPayingSum += cCurrentDue
+                currentMonthPaidSum += cCurrentPaid
+                currentMonthPendingSum += cCurrentPending
+                oldPendingSum += cOldPending
+
+                breakdowns.add(
+                    MemberChittyDuesItem(
+                        chittyId = chitty.id,
+                        chittyName = chitty.name,
+                        monthlyInstallment = chitty.monthlyInstallment,
+                        currentMonthDue = cCurrentDue,
+                        currentMonthPending = cCurrentPending,
+                        oldPending = cOldPending,
+                        totalDue = cCurrentPending + cOldPending
+                    )
+                )
+            }
+
+            MemberDuesOverview(
+                memberId = member.id,
+                memberName = member.name,
+                memberCode = member.memberCode,
+                mobileNumber = member.mobileNumber,
+                enrolledChittiesCount = memberships.size,
+                currentMonthPaying = currentMonthPayingSum,
+                currentMonthPaid = currentMonthPaidSum,
+                currentMonthPending = currentMonthPendingSum,
+                previousPending = oldPendingSum,
+                totalDue = currentMonthPendingSum + oldPendingSum,
+                chittyBreakdowns = breakdowns
+            )
+        }
     }
 
     /**
@@ -513,34 +631,50 @@ class ChittiRepository(private val database: AppDatabase) {
         val adminName = adminSettings?.adminName?.ifBlank { "Management" } ?: "Management"
 
         val lines = mutableListOf<String>()
-        var currentMonthDueSum = 0.0
+        var currentMonthPayingSum = 0.0
+        var currentMonthPendingSum = 0.0
         var previousOutstandingSum = 0.0
 
         for (membership in memberships) {
             val chitty = chittyDao.getChittyByIdDirect(membership.chittyId) ?: continue
             val installments = installmentDao.getInstallmentsForChittyMemberDirect(chitty.id, memberId)
+            val activeMonth = getActiveMonthNumber(chitty)
 
-            val currentInst = installments.firstOrNull { it.monthNumber == 1 }
-            val currentDue = currentInst?.dueAmount ?: chitty.monthlyInstallment
+            val currentInst = installments.firstOrNull { it.monthNumber == activeMonth }
+            val currentDue = chitty.monthlyInstallment
+            val currentPending = currentInst?.outstandingAmount ?: chitty.monthlyInstallment
+            val prevOutstanding = installments.filter { it.monthNumber < activeMonth }.sumOf { it.outstandingAmount }
 
-            val prevOutstanding = installments.filter { it.monthNumber > 1 && it.status != "PAID" }.sumOf { it.outstandingAmount }
+            val chittyLine = if (prevOutstanding > 0) {
+                "• ${chitty.name}: Current Month ₹${currentPending.toLong()} + Old Balance ₹${prevOutstanding.toLong()} = ₹${(currentPending + prevOutstanding).toLong()}"
+            } else {
+                "• ${chitty.name}: Current Month ₹${currentPending.toLong()}"
+            }
+            lines.add(chittyLine)
 
-            lines.add("• ${chitty.name} — ₹${currentDue.toLong()}")
-            currentMonthDueSum += currentDue
+            currentMonthPayingSum += currentDue
+            currentMonthPendingSum += currentPending
             previousOutstandingSum += prevOutstanding
         }
 
-        val totalAmountDue = currentMonthDueSum + previousOutstandingSum
+        val totalAmountDue = currentMonthPendingSum + previousOutstandingSum
 
         val message = buildString {
             append("${adminSettings?.reminderHeader?.ifBlank { "🔔 Cheeti Payment Reminder" } ?: "🔔 Cheeti Payment Reminder"}\n\n")
             append("Dear ${member.name},\n\n")
-            append("Your payments for this month:\n\n")
+            if (memberships.size > 1) {
+                append("You are enrolled in ${memberships.size} Chitties:\n\n")
+            } else {
+                append("Your Chitty payment details:\n\n")
+            }
             lines.forEach { append("$it\n") }
-            append("\n")
-            append("Current Month Due: ₹${currentMonthDueSum.toLong()}\n")
-            append("Previous Outstanding: ₹${previousOutstandingSum.toLong()}\n")
-            append("Total Amount Due: ₹${totalAmountDue.toLong()}\n\n")
+            append("\n----------------------------------\n")
+            append("1. Current Month Paying: ₹${currentMonthPendingSum.toLong()}\n")
+            if (previousOutstandingSum > 0) {
+                append("2. Previous / Old Pending: ₹${previousOutstandingSum.toLong()}\n")
+            }
+            append("👉 TOTAL BALANCE DUE: ₹${totalAmountDue.toLong()}\n")
+            append("----------------------------------\n\n")
             append("${adminSettings?.customNotes?.ifBlank { "Please make the payment by the due date." } ?: "Please make the payment by the due date."}\n\n")
             append("Thank you\n")
             append(adminName)

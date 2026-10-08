@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -76,6 +77,7 @@ fun MembersScreen(
 ) {
     val members by viewModel.members.collectAsState()
     val memberSearchHistory by viewModel.memberSearchHistory.collectAsState()
+    val memberDuesMap by viewModel.memberDuesMap.collectAsState()
     val keyboardController = LocalSoftwareKeyboardController.current
     var searchQuery by remember { mutableStateOf("") }
     var isAddDialogOpen by remember { mutableStateOf(showAddDialogInitially) }
@@ -224,6 +226,7 @@ fun MembersScreen(
                     items(filteredMembers) { member ->
                         MemberCard(
                             member = member,
+                            dues = memberDuesMap[member.id],
                             onClick = {
                                 if (searchQuery.isNotBlank()) {
                                     viewModel.addMemberSearch(searchQuery.trim())
@@ -279,6 +282,7 @@ fun MembersScreen(
 @Composable
 fun MemberCard(
     member: MemberEntity,
+    dues: com.example.data.model.MemberDuesOverview? = null,
     onClick: () -> Unit,
     onEdit: () -> Unit,
     onSendReminder: () -> Unit
@@ -292,85 +296,199 @@ fun MemberCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(16.dp)
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = member.name,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "(${member.memberCode})",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = member.name,
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "(${member.memberCode})",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Phone,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = member.mobileNumber,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                if (member.address.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(2.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = Icons.Default.LocationOn,
+                            imageVector = Icons.Default.Phone,
                             contentDescription = null,
                             modifier = Modifier.size(14.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = member.address,
+                            text = member.mobileNumber,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    if (member.address.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = member.address,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (dues != null && dues.enrolledChittiesCount > 0) {
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    if (dues.enrolledChittiesCount >= 2) Color(0xFFEFF6FF) else Color(0xFFF1F5F9),
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = if (dues.enrolledChittiesCount >= 2) "${dues.enrolledChittiesCount} Chitties" else "1 Chitty",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = if (dues.enrolledChittiesCount >= 2) com.example.ui.theme.NavyPrimary else Color(0xFF475569)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+
+                    StatusBadge(status = member.status)
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    IconButton(
+                        onClick = onSendReminder,
+                        modifier = Modifier.testTag("whatsapp_member_${member.id}")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Chat,
+                            contentDescription = "WhatsApp Reminder",
+                            tint = Color(0xFF25D366)
+                        )
+                    }
+
+                    IconButton(onClick = onEdit) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit Member",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                StatusBadge(status = member.status)
+            // Financial Summary Row: Current Month, Old Pending, Total Balance
+            if (dues != null && dues.enrolledChittiesCount > 0) {
+                Spacer(modifier = Modifier.height(10.dp))
+                androidx.compose.material3.Divider()
+                Spacer(modifier = Modifier.height(10.dp))
 
-                Spacer(modifier = Modifier.width(6.dp))
-
-                IconButton(
-                    onClick = onSendReminder,
-                    modifier = Modifier.testTag("whatsapp_member_${member.id}")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Chat,
-                        contentDescription = "WhatsApp Reminder",
-                        tint = Color(0xFF25D366)
-                    )
+                    Column {
+                        Text(
+                            text = "Paying This Month",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "₹${dues.currentMonthPaying.toLong()}",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = if (dues.currentMonthPending <= 0.0) com.example.ui.theme.GreenSuccess else com.example.ui.theme.OrangeWarning
+                            )
+                        )
+                    }
+
+                    if (dues.previousPending > 0.0) {
+                        Column {
+                            Text(
+                                text = "Old Pending",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "₹${dues.previousPending.toLong()}",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = com.example.ui.theme.RedAlert
+                                )
+                            )
+                        }
+                    }
+
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = "Total Balance",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "₹${dues.totalDue.toLong()}",
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = if (dues.totalDue > 0.0) com.example.ui.theme.RedAlert else com.example.ui.theme.GreenSuccess
+                            )
+                        )
+                    }
                 }
 
-                IconButton(onClick = onEdit) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Edit Member",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                // If in 2 or 3 chitties, show individual breakdown
+                if (dues.enrolledChittiesCount >= 2 && dues.chittyBreakdowns.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                            .padding(8.dp)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            dues.chittyBreakdowns.forEach { b ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = "• ${b.chittyName}:",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold)
+                                    )
+                                    Text(
+                                        text = if (b.oldPending > 0.0)
+                                            "Current: ₹${b.monthlyInstallment.toLong()} | Old: ₹${b.oldPending.toLong()} = ₹${b.totalDue.toLong()}"
+                                        else
+                                            "Current: ₹${b.monthlyInstallment.toLong()}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

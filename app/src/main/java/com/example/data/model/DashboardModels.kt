@@ -10,6 +10,8 @@ data class AdminDashboardMetrics(
     val totalMembers: Int = 0,
     val thisMonthExpectedCollection: Double = 0.0,
     val thisMonthCollected: Double = 0.0,
+    val currentMonthOutstanding: Double = 0.0,
+    val previousPending: Double = 0.0,
     val totalOutstanding: Double = 0.0
 )
 
@@ -17,7 +19,10 @@ data class MemberDashboardSummary(
     val member: MemberEntity,
     val totalChitties: Int,
     val currentMonthDue: Double,
+    val currentMonthPaid: Double = 0.0,
+    val currentMonthPending: Double = 0.0,
     val previousOutstanding: Double,
+    val totalDue: Double = currentMonthPending + previousOutstanding,
     val totalOutstanding: Double,
     val totalPaid: Double,
     val advanceCredit: Double,
@@ -29,8 +34,10 @@ data class MemberChittySummary(
     val shareNumber: Int,
     val monthlyInstallment: Double,
     val currentMonthDue: Double,
+    val currentMonthPaid: Double = 0.0,
+    val currentMonthPending: Double = 0.0,
     val previousOutstanding: Double,
-    val totalDue: Double,
+    val totalDue: Double = currentMonthPending + previousOutstanding,
     val totalOutstanding: Double,
     val totalPaid: Double,
     val advanceAmount: Double,
@@ -38,6 +45,30 @@ data class MemberChittySummary(
     val receivedMonth: Int? = null,
     val receivedAmount: Double? = null,
     val installments: List<MonthlyInstallmentEntity> = emptyList()
+)
+
+data class MemberDuesOverview(
+    val memberId: Long,
+    val memberName: String,
+    val memberCode: String,
+    val mobileNumber: String,
+    val enrolledChittiesCount: Int,
+    val currentMonthPaying: Double,
+    val currentMonthPaid: Double,
+    val currentMonthPending: Double,
+    val previousPending: Double,
+    val totalDue: Double,
+    val chittyBreakdowns: List<MemberChittyDuesItem> = emptyList()
+)
+
+data class MemberChittyDuesItem(
+    val chittyId: Long,
+    val chittyName: String,
+    val monthlyInstallment: Double,
+    val currentMonthDue: Double,
+    val currentMonthPending: Double,
+    val oldPending: Double,
+    val totalDue: Double
 )
 
 data class ChittyAllocationInput(
