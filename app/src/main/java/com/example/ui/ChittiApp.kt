@@ -32,10 +32,12 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -93,6 +95,7 @@ import com.example.ui.screens.RecipientsScreen
 import com.example.ui.screens.ReportsScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.SetupScreen
+import com.example.ui.screens.VoiceConversationScreen
 import com.example.ui.theme.NavyDark
 import com.example.ui.theme.NavyPrimary
 import com.example.ui.theme.TealAccent
@@ -143,6 +146,7 @@ fun ChittiApp(viewModel: MainViewModel) {
     var currentTab by remember { mutableStateOf(ScreenTab.DASHBOARD) }
     var viewingChittyId by remember { mutableStateOf<Long?>(null) }
     var viewingMemberId by remember { mutableStateOf<Long?>(null) }
+    var isVoiceConversationOpen by remember { mutableStateOf(false) }
     var preselectedPaymentMemberId by remember { mutableStateOf<Long?>(null) }
 
     // Shortcuts from Dashboard
@@ -154,6 +158,15 @@ fun ChittiApp(viewModel: MainViewModel) {
     var isMoreMenuOpen by remember { mutableStateOf(false) }
 
     // Handle back button when on sub-screens
+    if (isVoiceConversationOpen) {
+        BackHandler { isVoiceConversationOpen = false }
+        VoiceConversationScreen(
+            viewModel = viewModel,
+            onBack = { isVoiceConversationOpen = false }
+        )
+        return
+    }
+
     if (viewingChittyId != null) {
         BackHandler { viewingChittyId = null }
         ChittyDetailScreen(
@@ -248,6 +261,41 @@ fun ChittiApp(viewModel: MainViewModel) {
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                     )
                 }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                NavigationDrawerItem(
+                    icon = { Icon(imageVector = Icons.Default.RecordVoiceOver, contentDescription = "Voice Assistant", tint = TealAccent) },
+                    label = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Voice Assistant", fontWeight = FontWeight.SemiBold)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .background(TealAccent, RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "LIVE",
+                                    color = Color.White,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    },
+                    selected = false,
+                    onClick = {
+                        isVoiceConversationOpen = true
+                        scope.launch { drawerState.close() }
+                    },
+                    colors = NavigationDrawerItemDefaults.colors(
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    modifier = Modifier
+                        .padding(NavigationDrawerItemDefaults.ItemPadding)
+                        .testTag("drawer_voice_assistant_item")
+                )
             }
         }
     ) {
@@ -289,6 +337,16 @@ fun ChittiApp(viewModel: MainViewModel) {
                         }
                     },
                     actions = {
+                        IconButton(
+                            onClick = { isVoiceConversationOpen = true },
+                            modifier = Modifier.testTag("topbar_voice_assistant_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Mic,
+                                contentDescription = "Voice Assistant",
+                                tint = Color.White
+                            )
+                        }
                         val adminName = admin?.name ?: settings?.adminName ?: ""
                         if (adminName.isNotBlank()) {
                             Box(
@@ -447,7 +505,8 @@ fun ChittiApp(viewModel: MainViewModel) {
                             currentTab = ScreenTab.PAYMENTS
                             openRecordPaymentDialog = true
                         },
-                        onMemberClick = { id -> viewingMemberId = id }
+                        onMemberClick = { id -> viewingMemberId = id },
+                        onOpenVoiceAssistant = { isVoiceConversationOpen = true }
                     )
                     ScreenTab.CHITTIES -> ChittiesScreen(
                         viewModel = viewModel,

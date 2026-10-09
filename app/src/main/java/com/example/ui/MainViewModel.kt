@@ -1,6 +1,7 @@
 package com.example.ui
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.AppDatabase
@@ -17,6 +18,10 @@ import com.example.data.model.AdminDashboardMetrics
 import com.example.data.model.MemberDashboardSummary
 import com.example.data.model.MemberDuesOverview
 import com.example.data.repository.ChittiRepository
+import com.example.service.GeminiLiveService
+import com.example.service.LiveSessionState
+import com.example.service.VoiceMessage
+import com.example.util.WhatsAppHelper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -29,6 +34,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val database = AppDatabase.getInstance(application)
     val repository = ChittiRepository(database)
+
+    // Gemini Live Voice Assistant Service
+    val liveService = GeminiLiveService(application)
+    val liveSessionState = liveService.sessionState
+    val liveVoiceMessages = liveService.messages
+    val liveAudioWaveLevel = liveService.audioWaveLevel
+    val liveCurrentAssistantText = liveService.currentAssistantText
+    val liveErrorMessage = liveService.errorMessage
+    val isLiveMuted = liveService.isMuted
 
     val settings: StateFlow<SettingsEntity?> = repository.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
@@ -306,6 +320,49 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /**
+     * Triggers a WhatsApp message intent with pre-filled payment details
+     * for a member who has outstanding installments.
+     *
+     * @param context Context required to start the WhatsApp intent activity
+     * @param memberId Target member's ID
+     * @param directLaunch If true, launches WhatsApp intent directly; if false, opens the preview dialog
+     */
+    fun triggerWhatsAppReminderForMember(
+        context: Context,
+        memberId: Long,
+        directLaunch: Boolean = false
+    ) {
+        viewModelScope.launch {
+            val member = repository.getMemberByIdDirect(memberId) ?: return@launch
+            val msg = repository.generateWhatsAppMessage(memberId)
+            if (directLaunch) {
+                WhatsAppHelper.triggerWhatsAppMessageIntent(context, member.mobileNumber, msg)
+            } else {
+                _whatsAppPreview.value = Pair(member, msg)
+            }
+        }
+    }
+
+    /**
+     * Triggers a WhatsApp message intent with pre-filled payment details
+     * directly using the MemberEntity.
+     */
+    fun triggerWhatsAppReminder(
+        context: Context,
+        member: MemberEntity,
+        directLaunch: Boolean = false
+    ) {
+        viewModelScope.launch {
+            val msg = repository.generateWhatsAppMessage(member.id)
+            if (directLaunch) {
+                WhatsAppHelper.triggerWhatsAppMessageIntent(context, member.mobileNumber, msg)
+            } else {
+                _whatsAppPreview.value = Pair(member, msg)
+            }
+        }
+    }
+
     fun closeWhatsAppPreview() {
         _whatsAppPreview.value = null
     }
@@ -323,5 +380,53 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             repository.seedTestData()
             _snackbarMessage.value = "Test data seeded (Admin: Gopal Krishna, Member: Ravi Kumar, Chitties: ₹1L & ₹50K)."
         }
+    }
+
+    // Voice Conversations (Gemini Live API)
+    fun startLiveVoiceSession() {
+        val currentMetrics = metrics.value
+        val dues = memberDuesList.value
+        val activeCount = dues.count { it.enrolledChittiesCount > 0 }
+        val defaultersCount = dues.count { it.totalDue > 0 }
+
+        val contextInfo = buildString {
+            append("\n[Current Cheeti Financial Context]:")
+            append("\nTotal Active Members: $activeCount")
+            append("\nExpected Monthly Collection: ₹${currentMetrics.thisMonthExpectedCollection.toLong()}")
+            append("\nCollected So Far: ₹${currentMetrics.thisMonthCollected.toLong()}")
+            append("\nCurrent Month Outstanding: ₹${currentMetrics.currentMonthOutstanding.toLong()}")
+            append("\nOld Pending (Previous Balance): ₹${currentMetrics.previousPending.toLong()}")
+            append("\nTotal Outstanding Across All Chitties: ₹${currentMetrics.totalOutstanding.toLong()}")
+            append("\nMembers with Pending Dues: $defaultersCount")
+            if (defaultersCount > 0) {
+                append("\nKey member dues: ")
+                dues.filter { it.totalDue > 0 }.take(5).forEach {
+                    append("${it.memberName}: Total ₹${it.totalDue.toLong()} (Current Month ₹${it.currentMonthPaying.toLong()}, Old ₹${it.previousPending.toLong()}); ")
+                }
+            }
+        }
+
+        liveService.startSession(contextInfo)
+    }
+
+    fun sendVoiceTextPrompt(text: String) {
+        liveService.sendTextPrompt(text)
+    }
+
+    fun toggleVoiceMute() {
+        liveService.toggleMute()
+    }
+
+    fun endLiveVoiceSession() {
+        liveService.endSession()
+    }
+
+    fun clearVoiceChat() {
+        liveService.clearMessages()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        liveService.destroy()
     }
 }

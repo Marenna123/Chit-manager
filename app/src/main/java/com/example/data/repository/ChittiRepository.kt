@@ -104,6 +104,8 @@ class ChittiRepository(private val database: AppDatabase) {
 
     fun getMemberById(id: Long): Flow<MemberEntity?> = memberDao.getMemberById(id)
 
+    suspend fun getMemberByIdDirect(id: Long): MemberEntity? = memberDao.getMemberByIdDirect(id)
+
     suspend fun addMember(name: String, mobileNumber: String, address: String): Long {
         val totalMembers = memberDao.getMembersCountDirect()
         val code = "M%03d".format(totalMembers + 1)

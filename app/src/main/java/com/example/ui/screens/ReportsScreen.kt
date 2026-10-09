@@ -21,7 +21,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
@@ -35,19 +38,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.ui.MainViewModel
 import com.example.ui.components.StatusBadge
 import com.example.ui.theme.GreenSuccess
 import com.example.ui.theme.GreenSuccessLight
 import com.example.ui.theme.NavyPrimary
+import com.example.ui.theme.OrangeWarning
 import com.example.ui.theme.RedAlert
 import com.example.ui.theme.RedAlertLight
 
@@ -57,8 +64,11 @@ fun ReportsScreen(viewModel: MainViewModel) {
     val receipts by viewModel.receipts.collectAsState()
     val chitties by viewModel.chitties.collectAsState()
     val metrics by viewModel.metrics.collectAsState()
+    val memberDuesList by viewModel.memberDuesList.collectAsState()
+    val context = LocalContext.current
 
     var selectedTabIndex by remember { mutableIntStateOf(0) }
+    var showOnlyDefaulters by remember { mutableStateOf(true) }
 
     Column(
         modifier = Modifier
@@ -94,7 +104,13 @@ fun ReportsScreen(viewModel: MainViewModel) {
 
         when (selectedTabIndex) {
             0 -> {
-                // Outstanding Dues Report with 1-tap WhatsApp reminder
+                // Outstanding Dues Report with WhatsApp message intent triggers
+                val duesToShow = if (showOnlyDefaulters) {
+                    memberDuesList.filter { it.totalDue > 0 }
+                } else {
+                    memberDuesList.filter { it.enrolledChittiesCount > 0 }
+                }
+
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp),
@@ -106,34 +122,49 @@ fun ReportsScreen(viewModel: MainViewModel) {
                             shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(containerColor = RedAlertLight)
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Default.Warning,
-                                        contentDescription = null,
-                                        tint = RedAlert,
-                                        modifier = Modifier.size(28.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Column {
-                                        Text(
-                                            text = "Total System Outstanding",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = RedAlert
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.Warning,
+                                            contentDescription = null,
+                                            tint = RedAlert,
+                                            modifier = Modifier.size(28.dp)
                                         )
-                                        Text(
-                                            text = "₹${metrics.totalOutstanding.toLong()}",
-                                            style = MaterialTheme.typography.titleLarge.copy(
-                                                fontWeight = FontWeight.Bold,
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column {
+                                            Text(
+                                                text = "Total System Outstanding",
+                                                style = MaterialTheme.typography.bodySmall,
                                                 color = RedAlert
                                             )
+                                            Text(
+                                                text = "₹${metrics.totalOutstanding.toLong()}",
+                                                style = MaterialTheme.typography.titleLarge.copy(
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = RedAlert
+                                                )
+                                            )
+                                        }
+                                    }
+
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text(
+                                            text = "Month: ₹${metrics.currentMonthOutstanding.toLong()}",
+                                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = RedAlert
                                         )
+                                        if (metrics.previousPending > 0) {
+                                            Text(
+                                                text = "Old: ₹${metrics.previousPending.toLong()}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = RedAlert
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -141,52 +172,176 @@ fun ReportsScreen(viewModel: MainViewModel) {
                     }
 
                     item {
-                        Text(
-                            text = "Member Dues Ledger",
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (showOnlyDefaulters) "Members with Pending Dues (${duesToShow.size})" else "All Enrolled Members (${duesToShow.size})",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+                            )
+                            Button(
+                                onClick = { showOnlyDefaulters = !showOnlyDefaulters },
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = if (showOnlyDefaulters) "Show All" else "Only Pending",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
 
-                    items(members) { member ->
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(14.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                    if (duesToShow.isEmpty()) {
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(32.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
                                     Text(
-                                        text = "${member.name} (${member.memberCode})",
-                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                                    )
-                                    Text(
-                                        text = member.mobileNumber,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        text = "🎉 All member dues are completely cleared!",
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                        color = GreenSuccess
                                     )
                                 }
-
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    StatusBadge(status = member.status)
-
-                                    Spacer(modifier = Modifier.width(8.dp))
-
-                                    IconButton(
-                                        onClick = { viewModel.prepareWhatsAppReminder(member) },
-                                        modifier = Modifier.testTag("report_whatsapp_${member.id}")
+                            }
+                        }
+                    } else {
+                        items(duesToShow) { dues ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("report_member_due_${dues.memberId}"),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(14.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Chat,
-                                            contentDescription = "Send WhatsApp Reminder",
-                                            tint = Color(0xFF25D366)
-                                        )
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text(
+                                                    text = dues.memberName,
+                                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                                                )
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Text(
+                                                    text = "(${dues.memberCode})",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                            Text(
+                                                text = dues.mobileNumber,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            // WhatsApp Intent Direct Trigger Button
+                                            Button(
+                                                onClick = {
+                                                    viewModel.triggerWhatsAppReminderForMember(
+                                                        context = context,
+                                                        memberId = dues.memberId,
+                                                        directLaunch = true
+                                                    )
+                                                },
+                                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
+                                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                                shape = RoundedCornerShape(8.dp),
+                                                modifier = Modifier.testTag("report_whatsapp_direct_${dues.memberId}")
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Chat,
+                                                    contentDescription = "WhatsApp",
+                                                    modifier = Modifier.size(14.dp),
+                                                    tint = Color.White
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("WhatsApp", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                                            }
+
+                                            Spacer(modifier = Modifier.width(6.dp))
+
+                                            // WhatsApp Preview Dialog Trigger
+                                            IconButton(
+                                                onClick = {
+                                                    viewModel.triggerWhatsAppReminderForMember(
+                                                        context = context,
+                                                        memberId = dues.memberId,
+                                                        directLaunch = false
+                                                    )
+                                                },
+                                                modifier = Modifier
+                                                    .size(34.dp)
+                                                    .testTag("report_whatsapp_${dues.memberId}")
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Send,
+                                                    contentDescription = "Preview & Share",
+                                                    tint = NavyPrimary,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    Divider()
+                                    Spacer(modifier = Modifier.height(10.dp))
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Column {
+                                            Text(text = "Paying This Month", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Text(
+                                                text = "₹${dues.currentMonthPaying.toLong()}",
+                                                style = MaterialTheme.typography.bodyMedium.copy(
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (dues.currentMonthPending <= 0) GreenSuccess else OrangeWarning
+                                                )
+                                            )
+                                        }
+
+                                        Column {
+                                            Text(text = "Old Pending", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Text(
+                                                text = "₹${dues.previousPending.toLong()}",
+                                                style = MaterialTheme.typography.bodyMedium.copy(
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (dues.previousPending > 0) RedAlert else GreenSuccess
+                                                )
+                                            )
+                                        }
+
+                                        Column(horizontalAlignment = Alignment.End) {
+                                            Text(text = "Total Balance Due", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Text(
+                                                text = "₹${dues.totalDue.toLong()}",
+                                                style = MaterialTheme.typography.titleSmall.copy(
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (dues.totalDue > 0) RedAlert else GreenSuccess
+                                                )
+                                            )
+                                        }
                                     }
                                 }
                             }

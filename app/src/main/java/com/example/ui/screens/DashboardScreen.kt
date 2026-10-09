@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,9 +27,11 @@ import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.PendingActions
+import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
@@ -76,7 +79,8 @@ fun DashboardScreen(
     onOpenCreateChitty: () -> Unit,
     onOpenAddMember: () -> Unit,
     onOpenRecordPayment: () -> Unit,
-    onMemberClick: (Long) -> Unit = {}
+    onMemberClick: (Long) -> Unit = {},
+    onOpenVoiceAssistant: () -> Unit = {}
 ) {
     val metrics by viewModel.metrics.collectAsState()
     val admin by viewModel.admin.collectAsState()
@@ -212,6 +216,75 @@ fun DashboardScreen(
                     Icon(imageVector = Icons.Default.Group, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("Add Member", fontSize = 13.sp)
+                }
+            }
+        }
+
+        // AI Voice Assistant Interactive Banner Card
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpenVoiceAssistant() }
+                    .testTag("dashboard_voice_assistant_card"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = NavyPrimary.copy(alpha = 0.08f)
+                ),
+                border = BorderStroke(1.dp, NavyPrimary.copy(alpha = 0.2f))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .background(NavyPrimary, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.RecordVoiceOver,
+                            contentDescription = "Voice Assistant",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Voice Assistant",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .background(TealAccent, RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "AI LIVE",
+                                    color = Color.White,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                        Text(
+                            text = "Talk with Cheeti AI in real-time about dues, collections & chitties",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = "Open Voice Assistant",
+                        tint = NavyPrimary,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
         }
